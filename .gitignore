@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+uploads/
+temp_runs/
+results/
+*.db
+.env
+.idea/
