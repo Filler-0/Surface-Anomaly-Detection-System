@@ -8,8 +8,8 @@ import streamlit as st
 from PIL import Image
 
 from db import insert_inspection
-
 from ui_styles import inject_global_styles, render_hero, open_card, close_card
+from object_localisation_classification.prepare_image import prepare_image
 
 BASE_DIR = Path(__file__).parent
 UPLOADS_DIR = BASE_DIR / "uploads"
@@ -149,7 +149,46 @@ if uploaded_file is not None and analyze_clicked:
 
     try:
         saved_image_path = save_uploaded_file(uploaded_file)
-        temp_dir = create_single_image_temp_folder(saved_image_path)
+
+        with st.spinner("Localising and classifying object..."):
+            pil_image = Image.open(saved_image_path).convert("RGB")
+            prep = prepare_image(pil_image)
+
+        object_label      = prep["label"]
+        object_confidence = prep["confidence"]
+        cropped_image     = prep["cropped"]
+        top3              = prep["top3"]
+
+        # ── Classification result preview ─────────────────────────────────
+        st.markdown("---")
+        st.subheader("Step 1 - Object Classification")
+
+        cls_col1, cls_col2 = st.columns([1, 1], gap="large")
+
+        with cls_col1:
+            st.image(cropped_image, caption="Cropped ROI passed to classifier", use_container_width=True)
+
+        with cls_col2:
+            label_color = "normal" if object_label != "unknown" else "off"
+            st.metric("Object type", object_label.upper())
+            st.metric("Confidence", f"{object_confidence * 100:.1f}%")
+
+            st.write("Top 3 predictions:")
+            for cls_name, cls_score in top3:
+                bar_color = "green" if cls_name == object_label else "gray"
+                st.write(f"- **{cls_name}** — {cls_score * 100:.1f}%")
+                st.progress(float(cls_score))
+
+            if object_label == "unknown":
+                st.warning("Object could not be confidently classified. Anomaly detection may be less accurate.")
+
+        st.markdown("---")
+
+        # ── Continue to anomaly detection ─────────────────────────────────
+        crop_save_path = UPLOADS_DIR / f"crop_{saved_image_path.name}"
+        cropped_image.save(crop_save_path)
+
+        temp_dir = create_single_image_temp_folder(crop_save_path)
 
         with st.spinner("Running anomaly detector..."):
             output = run_detector(temp_dir)
@@ -160,7 +199,7 @@ if uploaded_file is not None and analyze_clicked:
         inspection_id = insert_inspection(
             image_name=uploaded_file.name,
             image_path=str(saved_image_path),
-            crop_path=None,
+            crop_path=str(crop_save_path),
             heatmap_path=None,
             result_image_path=result_image_path,
             anomaly_score=score,
@@ -170,11 +209,14 @@ if uploaded_file is not None and analyze_clicked:
 
         st.success(f"Analysis complete. Record #{inspection_id} saved.")
 
-        m1, m2 = st.columns(2)
+        st.subheader("Step 2 - Anomaly Detection")
+        m1, m2, m3 = st.columns(3)
         with m1:
             st.metric("Verdict", verdict)
         with m2:
             st.metric("Anomaly score", format_score(score))
+        with m3:
+            st.metric("Object class", f"{object_label} ({object_confidence * 100:.0f}%)")
 
         st.markdown('<div class="result-box">', unsafe_allow_html=True)
         st.subheader("Detection result")
