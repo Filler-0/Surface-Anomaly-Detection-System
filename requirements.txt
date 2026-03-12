@@ -10,3 +10,17 @@ pandas>=2.0
 numpy>=1.24
 
 matplotlib>=3.7
+
+# Subsystem 1 - ROI Extraction
+opencv-python>=4.8
+
+# Subsystem 2 - Object Classification
+open-clip-torch>=2.20
+torch>=2.0
+torchvision>=0.15
+requests
+
+# Subsystem 3 - Anomaly Detection (AnomalyCLIP-style)
+tqdm>=4.65
+scikit-learn>=1.3
+seaborn>=0.12
