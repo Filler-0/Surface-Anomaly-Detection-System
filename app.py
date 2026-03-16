@@ -96,7 +96,7 @@ with left_col:
     if uploaded_file is not None:
         try:
             preview_image = Image.open(uploaded_file).convert("RGB")
-            st.image(preview_image, caption="Uploaded image", use_container_width=True)
+            st.image(preview_image, caption="Uploaded image", width="stretch")
         except Exception:
             st.error("Invalid image file.")
             st.stop()
@@ -105,13 +105,14 @@ with left_col:
     close_card()
 
 with right_col:
-    open_card("How it works", "Simple user flow.")
+    st.markdown('<div class="info-card">', unsafe_allow_html=True)
+    st.subheader("How it works")
     st.write("1. Upload an image.")
     st.write("2. The system localises and classifies the object.")
     st.write("3. If the object is supported, anomaly detection is run.")
-    st.write("4. The result is saved to PostgreSQL.")
+    st.write("4. The result is saved to database.")
     st.write("5. You can review it later in Dashboard and History.")
-    close_card()
+    st.markdown('</div>', unsafe_allow_html=True)
 
 if uploaded_file is not None and analyze_clicked:
     temp_run_dir = None
@@ -146,7 +147,7 @@ if uploaded_file is not None and analyze_clicked:
         with class_col1:
             crop_image = safe_open_image(pipeline_result["crop_path"])
             if crop_image is not None:
-                st.image(crop_image, caption="Cropped ROI", use_container_width=True)
+                st.image(crop_image, caption="Cropped ROI", width="stretch")
 
         with class_col2:
             st.metric("Object type", pipeline_result["class_label"].upper())
@@ -189,7 +190,7 @@ if uploaded_file is not None and analyze_clicked:
                     st.image(
                         result_image,
                         caption="Generated result visualization",
-                        use_container_width=True,
+                        width="stretch",
                     )
                 else:
                     st.warning("Result image was found, but it could not be opened.")

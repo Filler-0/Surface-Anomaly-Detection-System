@@ -90,5 +90,5 @@ with lower_right:
         lambda x: f"{x:.2f}%" if pd.notna(x) else "N/A"
     )
     latest_df = latest_df.head(5)
-    st.dataframe(latest_df, use_container_width=True)
+    st.dataframe(latest_df, width="stretch")
     close_card()

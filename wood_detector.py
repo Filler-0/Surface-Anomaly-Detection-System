@@ -1,5 +1,6 @@
 import sys
 
+from pathlib import Path
 
 if len(sys.argv) != 2:
     print('Usage: python wood_detector.py <image dir path>')
@@ -17,6 +18,9 @@ log = logging.getLogger("lightning_fabric")
 log.setLevel('ERROR')
 warnings.filterwarnings('ignore')
 
+BASE_DIR = Path(__file__).resolve().parent
+CKPT_PATH = BASE_DIR / "models" / "stfpm.ckpt"
+
 # Predictions
 engine = Engine()
 model = Stfpm()
@@ -29,7 +33,7 @@ dataset = PredictDataset(
 predictions = engine.predict(
     model=model,
     dataset=dataset,
-    ckpt_path="stfpm.ckpt",
+    ckpt_path=CKPT_PATH,
 )
 
 for prediction in predictions:

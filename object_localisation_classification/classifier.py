@@ -12,18 +12,29 @@ from PIL import Image
 from pathlib import Path
 import open_clip
 import requests
+from safetensors.torch import load_file
 
-MODEL_PATH = Path(__file__).parent / "classification_model.pt"
-META_PATH  = Path(__file__).parent / "classification_metadata.json"
+BASE_DIR = Path(__file__).resolve().parent.parent
+MODELS_DIR = BASE_DIR / "models"
+
+MODEL_PATH = MODELS_DIR / "classification_model.pt"
+CLIP_MODEL_PATH = MODELS_DIR / "open_clip_model.safetensors"
+META_PATH = Path(__file__).parent / "classification_metadata.json"
+
+if not MODEL_PATH.exists():
+    raise FileNotFoundError(f"Missing classifier model: {MODEL_PATH}")
+
+if not CLIP_MODEL_PATH.exists():
+    raise FileNotFoundError(f"Missing CLIP backbone: {CLIP_MODEL_PATH}")
 
 MODEL_URL = "https://github.com/Filler-0/Surface-Anomaly-Detection-System/releases/download/v1.0/classification_model.pt"
 
 CLIP_MEAN = [0.48145466, 0.4578275, 0.40821073]
-CLIP_STD  = [0.26862954, 0.26130258, 0.27577711]
-IMG_SIZE  = 224
+CLIP_STD = [0.26862954, 0.26130258, 0.27577711]
+IMG_SIZE = 224
 
 UNKNOWN_THRESHOLD = 0.60
-MARGIN_THRESHOLD  = 0.15
+MARGIN_THRESHOLD = 0.15
 
 
 def download_model_if_missing():
@@ -60,7 +71,6 @@ class CLIPClassifier(nn.Module):
         )
 
     def forward(self, x):
-
         with torch.no_grad():
             features = self.clip_visual(x).float()
 
@@ -68,17 +78,18 @@ class CLIPClassifier(nn.Module):
 
 
 def load_classifier(device="cpu"):
-
     download_model_if_missing()
 
     with open(META_PATH) as f:
         meta = json.load(f)
 
-    clip_model, _, _ = open_clip.create_model_and_transforms(
+    clip_model, _, preprocess = open_clip.create_model_and_transforms(
         "ViT-L-14",
-        pretrained="openai"
+        pretrained=None
     )
 
+    state_dict = load_file(str(CLIP_MODEL_PATH))
+    clip_model.load_state_dict(state_dict)
     clip_model = clip_model.to(device).eval()
 
     for p in clip_model.parameters():
@@ -90,7 +101,7 @@ def load_classifier(device="cpu"):
         meta["feature_dim"]
     )
 
-    ckpt = torch.load(MODEL_PATH, map_location=device)
+    ckpt = torch.load(MODEL_PATH, map_location=device, weights_only=False)
 
     model.load_state_dict(ckpt["model_state"])
 
@@ -111,8 +122,7 @@ def classify(
         meta=None,
         transform=None,
         device="cpu"
-    ) -> dict:
-
+) -> dict:
     """
     Classify a cropped object image.
     """

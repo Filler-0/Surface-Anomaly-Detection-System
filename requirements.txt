@@ -18,7 +18,7 @@ opencv-python>=4.8
 open-clip-torch>=2.20
 torch>=2.0
 torchvision>=0.15
-requests
+safetensors>=0.4
 
 # Subsystem 3 - Anomaly Detection (AnomalyCLIP-style)
 tqdm>=4.65

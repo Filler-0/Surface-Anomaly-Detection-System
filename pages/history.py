@@ -81,15 +81,15 @@ for row in rows:
         with right_col:
             original_image = safe_open_image(row["image_path"])
             if original_image is not None:
-                st.image(original_image, caption="Original image", use_container_width=True)
+                st.image(original_image, caption="Original image", width="stretch")
 
             crop_image = safe_open_image(row["crop_path"])
             if crop_image is not None:
-                st.image(crop_image, caption="Cropped ROI", use_container_width=True)
+                st.image(crop_image, caption="Cropped ROI", width="stretch")
 
             result_image = safe_open_image(row["result_image_path"])
             if result_image is not None:
-                st.image(result_image, caption="Result visualization", use_container_width=True)
+                st.image(result_image, caption="Result visualization", width="stretch")
 
         with st.expander("Technical output"):
             st.code(row["raw_output"] or "No technical output saved.")
