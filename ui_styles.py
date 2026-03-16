@@ -5,7 +5,6 @@ def inject_global_styles():
     st.markdown(
         """
         <style>
-        /* ===== Base app ===== */
         .stApp {
             background: #f8fafc;
             color: #0f172a;
@@ -16,37 +15,18 @@ def inject_global_styles():
             padding-top: 2rem;
             padding-bottom: 2rem;
         }
-        /* ===== Sidebar ===== */
+
         section[data-testid="stSidebar"] {
             background: #ffffff;
             border-right: 1px solid #e2e8f0;
             min-width: 260px !important;
             max-width: 260px !important;
         }
-        
-        section[data-testid="stSidebar"] * {
-            color: #0f172a !important;
-        }
-        
-        button[kind="header"][aria-label="Close sidebar"] {
-            display: none !important;
-        }
-        
-        button[kind="header"][aria-label="Open sidebar"] {
-            display: none !important;
-        }
-
-        /* ===== Sidebar ===== */
-        section[data-testid="stSidebar"] {
-            background: #ffffff;
-            border-right: 1px solid #e2e8f0;
-        }
 
         section[data-testid="stSidebar"] * {
             color: #0f172a !important;
         }
 
-        /* ===== Typography ===== */
         h1, h2, h3 {
             color: #0f172a;
             letter-spacing: -0.02em;
@@ -57,7 +37,6 @@ def inject_global_styles():
             color: #334155;
         }
 
-        /* ===== Hero ===== */
         .app-hero {
             background: #ffffff;
             border: 1px solid #e2e8f0;
@@ -68,7 +47,7 @@ def inject_global_styles():
         }
 
         .hero-title {
-            font-size: 2.6rem;
+            font-size: 2.4rem;
             font-weight: 700;
             color: #0f172a;
             margin: 0 0 0.4rem 0;
@@ -80,7 +59,6 @@ def inject_global_styles():
             line-height: 1.6;
         }
 
-        /* ===== Cards ===== */
         .app-card {
             background: #ffffff;
             border: 1px solid #e2e8f0;
@@ -102,7 +80,6 @@ def inject_global_styles():
             margin-bottom: 1rem;
         }
 
-        /* ===== Upload ===== */
         div[data-testid="stFileUploader"] {
             background: #f8fafc;
             border: 1px dashed #cbd5e1;
@@ -110,7 +87,6 @@ def inject_global_styles():
             padding: 10px;
         }
 
-        /* ===== Inputs ===== */
         div[data-testid="stTextInput"] input,
         div[data-testid="stNumberInput"] input,
         div[data-testid="stTextArea"] textarea,
@@ -122,7 +98,6 @@ def inject_global_styles():
             border: 1px solid #cbd5e1 !important;
         }
 
-        /* ===== Button ===== */
         div[data-testid="stButton"] > button {
             width: 100%;
             border: none !important;
@@ -134,17 +109,16 @@ def inject_global_styles():
             background: #2563eb !important;
             box-shadow: 0 6px 16px rgba(37, 99, 235, 0.22);
         }
-        
+
         div[data-testid="stButton"] > button p,
         div[data-testid="stButton"] > button span {
             color: #ffffff !important;
         }
-        
+
         div[data-testid="stButton"] > button:hover {
             background: #1d4ed8 !important;
         }
 
-        /* ===== Metrics ===== */
         div[data-testid="stMetric"] {
             background: #ffffff;
             border: 1px solid #e2e8f0;
@@ -160,7 +134,6 @@ def inject_global_styles():
             color: #0f172a;
         }
 
-        /* ===== Expander ===== */
         div[data-testid="stExpander"] {
             border: 1px solid #e2e8f0;
             border-radius: 16px;
@@ -168,12 +141,10 @@ def inject_global_styles():
             overflow: hidden;
         }
 
-        /* ===== Alerts ===== */
         .stAlert {
             border-radius: 14px;
         }
 
-        /* ===== Dataframe ===== */
         div[data-testid="stDataFrame"] {
             border: 1px solid #e2e8f0;
             border-radius: 16px;
@@ -181,7 +152,6 @@ def inject_global_styles():
             background: white;
         }
 
-        /* ===== Small badges ===== */
         .status-normal {
             display: inline-block;
             padding: 6px 10px;
@@ -204,7 +174,28 @@ def inject_global_styles():
             font-size: 0.85rem;
         }
 
-        /* ===== KPI cards ===== */
+        .status-manual {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .status-unsupported {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #e0e7ff;
+            color: #3730a3;
+            border: 1px solid #c7d2fe;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
         .kpi-card {
             background: #ffffff;
             border: 1px solid #e2e8f0;
@@ -216,14 +207,14 @@ def inject_global_styles():
             flex-direction: column;
             justify-content: space-between;
         }
-        
+
         .kpi-label {
             color: #64748b;
             font-size: 0.92rem;
             font-weight: 600;
             margin-bottom: 14px;
         }
-        
+
         .kpi-value {
             color: #0f172a;
             font-size: 2.2rem;
@@ -231,7 +222,7 @@ def inject_global_styles():
             line-height: 1;
             margin-bottom: 10px;
         }
-        
+
         .kpi-sub {
             color: #94a3b8;
             font-size: 0.86rem;
@@ -285,7 +276,12 @@ def render_kpi(label: str, value: str, sub: str = ""):
 
 def verdict_badge(verdict: str):
     verdict_upper = (verdict or "").upper()
+
     if verdict_upper == "NORMAL":
         st.markdown('<span class="status-normal">NORMAL</span>', unsafe_allow_html=True)
-    else:
+    elif verdict_upper == "ANOMALOUS":
         st.markdown('<span class="status-anomalous">ANOMALOUS</span>', unsafe_allow_html=True)
+    elif verdict_upper == "MANUAL_INSPECTION":
+        st.markdown('<span class="status-manual">MANUAL_INSPECTION</span>', unsafe_allow_html=True)
+    else:
+        st.markdown('<span class="status-unsupported">UNSUPPORTED_FORMAT</span>', unsafe_allow_html=True)
