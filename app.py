@@ -1,24 +1,16 @@
-import re
-import shutil
-import subprocess
-import uuid
+import json
 from pathlib import Path
 
 import streamlit as st
 from PIL import Image
 
 from db import insert_inspection
+from pipeline import run_full_pipeline, cleanup_temp_run
 from ui_styles import inject_global_styles, render_hero, open_card, close_card
-from object_localisation_classification.prepare_image import prepare_image
 
 BASE_DIR = Path(__file__).parent
 UPLOADS_DIR = BASE_DIR / "uploads"
-TEMP_RUNS_DIR = BASE_DIR / "temp_runs"
-RESULTS_DIR = BASE_DIR / "results"
-
-UPLOADS_DIR.mkdir(exist_ok=True)
-TEMP_RUNS_DIR.mkdir(exist_ok=True)
-RESULTS_DIR.mkdir(exist_ok=True)
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
 st.set_page_config(
     page_title="Surface Anomaly Detection System",
@@ -30,67 +22,23 @@ inject_global_styles()
 
 render_hero(
     "Surface Anomaly Detection System",
-    "Upload an image, run anomaly detection, and review the generated result visualization."
+    "Upload an image, run classification and anomaly detection, and review the generated result visualization.",
 )
 
+
 def save_uploaded_file(uploaded_file) -> Path:
-    unique_name = f"{uuid.uuid4()}_{uploaded_file.name}"
+    unique_name = f"{uploaded_file.name}"
     save_path = UPLOADS_DIR / unique_name
+
+    counter = 1
+    while save_path.exists():
+        save_path = UPLOADS_DIR / f"{save_path.stem}_{counter}{save_path.suffix}"
+        counter += 1
+
     with open(save_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
+
     return save_path
-
-
-def create_single_image_temp_folder(saved_image_path: Path) -> Path:
-    run_dir = TEMP_RUNS_DIR / str(uuid.uuid4())
-    run_dir.mkdir(parents=True, exist_ok=True)
-    temp_image_path = run_dir / saved_image_path.name
-    shutil.copy(saved_image_path, temp_image_path)
-    return run_dir
-
-
-def run_detector(image_dir: Path) -> str:
-    result = subprocess.run(
-        ["python", "wood_detector.py", str(image_dir)],
-        capture_output=True,
-        text=True,
-        cwd=BASE_DIR,
-    )
-
-    if result.returncode != 0:
-        raise RuntimeError(result.stderr.strip() or result.stdout.strip() or "Detector failed.")
-
-    return result.stdout.strip()
-
-
-def parse_detector_output(output: str):
-    anomalous_match = re.search(r"(.+) is anomalous with ([0-9.]+)% certainty", output)
-    normal_match = re.search(r"(.+) is normal", output)
-
-    if anomalous_match:
-        image_path = anomalous_match.group(1).strip()
-        score = float(anomalous_match.group(2))
-        return image_path, "ANOMALOUS", score
-
-    if normal_match:
-        image_path = normal_match.group(1).strip()
-        return image_path, "NORMAL", 0.0
-
-    raise ValueError(f"Unexpected detector output: {output}")
-
-
-def find_latest_result_image() -> str | None:
-    image_extensions = {".png", ".jpg", ".jpeg", ".webp"}
-    candidates = [
-        path for path in RESULTS_DIR.rglob("*")
-        if path.is_file() and path.suffix.lower() in image_extensions
-    ]
-
-    if not candidates:
-        return None
-
-    latest_file = max(candidates, key=lambda p: p.stat().st_mtime)
-    return str(latest_file)
 
 
 def safe_open_image(image_path_str: str | None):
@@ -107,140 +55,153 @@ def safe_open_image(image_path_str: str | None):
         return None
 
 
-def format_score(score):
-    if score is None:
+def format_percent_from_ratio(value):
+    if value is None:
         return "N/A"
-    return f"{score:.2f}%"
+    return f"{value * 100:.1f}%"
 
-left_col, right_col = st.columns([1.15, 0.85], gap="large")
+
+def format_percent(value):
+    if value is None:
+        return "N/A"
+    return f"{value:.2f}%"
+
+
+def render_top3(top3_predictions_json: str | None):
+    if not top3_predictions_json:
+        return
+
+    try:
+        top3 = json.loads(top3_predictions_json)
+    except Exception:
+        return
+
+    st.write("Top 3 predictions")
+    for cls_name, cls_score in top3:
+        st.write(f"- **{cls_name}** — {cls_score * 100:.1f}%")
+        st.progress(float(cls_score))
+
+
+left_col, right_col = st.columns([1.1, 0.9], gap="large")
 
 with left_col:
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.subheader("Upload image")
+    open_card("Upload image", "Choose a JPG or PNG image to start analysis.")
     uploaded_file = st.file_uploader(
         "Choose a JPG or PNG image",
         type=["jpg", "jpeg", "png"],
         label_visibility="collapsed",
     )
 
+    preview_image = None
     if uploaded_file is not None:
         try:
-            preview_image = Image.open(uploaded_file)
-            st.image(preview_image, caption="Uploaded image", use_container_width=True)
+            preview_image = Image.open(uploaded_file).convert("RGB")
+            st.image(preview_image, caption="Uploaded image", width="stretch")
         except Exception:
             st.error("Invalid image file.")
             st.stop()
 
     analyze_clicked = st.button("Analyze")
-    st.markdown('</div>', unsafe_allow_html=True)
+    close_card()
 
 with right_col:
     st.markdown('<div class="info-card">', unsafe_allow_html=True)
     st.subheader("How it works")
     st.write("1. Upload an image.")
-    st.write("2. The detector analyzes the surface.")
-    st.write("3. The system generates a result visualization.")
-    st.write("4. The result is saved to PostgreSQL.")
+    st.write("2. The system localises and classifies the object.")
+    st.write("3. If the object is supported, anomaly detection is run.")
+    st.write("4. The result is saved to database.")
     st.write("5. You can review it later in Dashboard and History.")
     st.markdown('</div>', unsafe_allow_html=True)
 
 if uploaded_file is not None and analyze_clicked:
-    temp_dir = None
+    temp_run_dir = None
 
     try:
         saved_image_path = save_uploaded_file(uploaded_file)
 
-        with st.spinner("Localising and classifying object..."):
-            pil_image = Image.open(saved_image_path).convert("RGB")
-            prep = prepare_image(pil_image)
+        with st.spinner("Running full pipeline..."):
+            pipeline_result = run_full_pipeline(str(saved_image_path))
 
-        object_label      = prep["label"]
-        object_confidence = prep["confidence"]
-        cropped_image     = prep["cropped"]
-        top3              = prep["top3"]
-
-        # ── Classification result preview ─────────────────────────────────
-        st.markdown("---")
-        st.subheader("Step 1 - Object Classification")
-
-        cls_col1, cls_col2 = st.columns([1, 1], gap="large")
-
-        with cls_col1:
-            st.image(cropped_image, caption="Cropped ROI passed to classifier", use_container_width=True)
-
-        with cls_col2:
-            label_color = "normal" if object_label != "unknown" else "off"
-            st.metric("Object type", object_label.upper())
-            st.metric("Confidence", f"{object_confidence * 100:.1f}%")
-
-            st.write("Top 3 predictions:")
-            for cls_name, cls_score in top3:
-                bar_color = "green" if cls_name == object_label else "gray"
-                st.write(f"- **{cls_name}** — {cls_score * 100:.1f}%")
-                st.progress(float(cls_score))
-
-            if object_label == "unknown":
-                st.warning("Object could not be confidently classified. Anomaly detection may be less accurate.")
-
-        st.markdown("---")
-
-        # ── Continue to anomaly detection ─────────────────────────────────
-        crop_save_path = UPLOADS_DIR / f"crop_{saved_image_path.name}"
-        cropped_image.save(crop_save_path)
-
-        temp_dir = create_single_image_temp_folder(crop_save_path)
-
-        with st.spinner("Running anomaly detector..."):
-            output = run_detector(temp_dir)
-
-        _, verdict, score = parse_detector_output(output)
-        result_image_path = find_latest_result_image()
+        temp_run_dir = pipeline_result["temp_run_dir"]
 
         inspection_id = insert_inspection(
             image_name=uploaded_file.name,
-            image_path=str(saved_image_path),
-            crop_path=str(crop_save_path),
-            heatmap_path=None,
-            result_image_path=result_image_path,
-            anomaly_score=score,
-            verdict=verdict,
-            raw_output=output,
+            image_path=pipeline_result["image_path"],
+            crop_path=pipeline_result["crop_path"],
+            class_label=pipeline_result["class_label"],
+            class_confidence=pipeline_result["class_confidence"],
+            top3_predictions=pipeline_result["top3_predictions"],
+            heatmap_path=pipeline_result["heatmap_path"],
+            result_image_path=pipeline_result["result_image_path"],
+            anomaly_score=pipeline_result["anomaly_score"],
+            verdict=pipeline_result["verdict"],
+            raw_output=pipeline_result["raw_output"],
         )
 
-        st.success(f"Analysis complete. Record #{inspection_id} saved.")
+        st.markdown("---")
+        st.subheader("Step 1 — Object classification")
 
-        st.subheader("Step 2 - Anomaly Detection")
-        m1, m2, m3 = st.columns(3)
-        with m1:
-            st.metric("Verdict", verdict)
-        with m2:
-            st.metric("Anomaly score", format_score(score))
-        with m3:
-            st.metric("Object class", f"{object_label} ({object_confidence * 100:.0f}%)")
+        class_col1, class_col2 = st.columns([1, 1], gap="large")
 
-        st.markdown('<div class="result-box">', unsafe_allow_html=True)
-        st.subheader("Detection result")
+        with class_col1:
+            crop_image = safe_open_image(pipeline_result["crop_path"])
+            if crop_image is not None:
+                st.image(crop_image, caption="Cropped ROI", width="stretch")
 
-        if result_image_path:
-            result_image = safe_open_image(result_image_path)
-            if result_image is not None:
-                st.image(
-                    result_image,
-                    caption="Generated result visualization",
-                    use_container_width=True,
-                )
-            else:
-                st.warning("Result image was found, but it could not be opened.")
+        with class_col2:
+            st.metric("Object type", pipeline_result["class_label"].upper())
+            st.metric("Confidence", format_percent_from_ratio(pipeline_result["class_confidence"]))
+            render_top3(pipeline_result["top3_predictions"])
+
+        st.markdown("---")
+        st.subheader("Step 2 — Final decision")
+
+        verdict = pipeline_result["verdict"]
+
+        if verdict == "UNSUPPORTED_FORMAT":
+            st.warning("The uploaded product format/type is not supported by the system.")
+            st.info(f"Record #{inspection_id} saved with status: UNSUPPORTED_FORMAT")
+
+        elif verdict == "MANUAL_INSPECTION":
+            st.warning("The image should be sent for manual inspection.")
+            st.info(f"Record #{inspection_id} saved with status: MANUAL_INSPECTION")
+
+            if pipeline_result["anomaly_score"] is not None:
+                st.metric("Anomaly confidence", format_percent(pipeline_result["anomaly_score"]))
+
         else:
-            st.warning("No result visualization was found in the results folder.")
+            st.success(f"Analysis complete. Record #{inspection_id} saved.")
 
-        st.markdown('</div>', unsafe_allow_html=True)
+            m1, m2, m3, m4 = st.columns(4)
+            with m1:
+                st.metric("Object class", pipeline_result["class_label"].upper())
+            with m2:
+                st.metric("Class confidence", format_percent_from_ratio(pipeline_result["class_confidence"]))
+            with m3:
+                st.metric("Verdict", pipeline_result["verdict"])
+            with m4:
+                st.metric("Anomaly score", format_percent(pipeline_result["anomaly_score"]))
+
+            open_card("Detection result", "Generated model visualization.")
+            if pipeline_result["result_image_path"]:
+                result_image = safe_open_image(pipeline_result["result_image_path"])
+                if result_image is not None:
+                    st.image(
+                        result_image,
+                        caption="Generated result visualization",
+                        width="stretch",
+                    )
+                else:
+                    st.warning("Result image was found, but it could not be opened.")
+            else:
+                st.warning("No result visualization was found in the results folder.")
+            close_card()
 
         with st.expander("Technical output"):
-            st.code(output)
+            st.code(pipeline_result["raw_output"] or "No technical output saved.")
 
     except Exception as e:
         st.error(str(e))
     finally:
-        if temp_dir and temp_dir.exists():
-            shutil.rmtree(temp_dir, ignore_errors=True)
+        cleanup_temp_run(temp_run_dir)

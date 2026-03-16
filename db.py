@@ -17,10 +17,23 @@ def get_connection():
     )
 
 
+def test_connection():
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT version();")
+    version = cur.fetchone()
+    cur.close()
+    conn.close()
+    return version
+
+
 def insert_inspection(
     image_name,
     image_path,
     crop_path,
+    class_label,
+    class_confidence,
+    top3_predictions,
     heatmap_path,
     result_image_path,
     anomaly_score,
@@ -35,19 +48,25 @@ def insert_inspection(
             image_name,
             image_path,
             crop_path,
+            class_label,
+            class_confidence,
+            top3_predictions,
             heatmap_path,
             result_image_path,
             anomaly_score,
             verdict,
             raw_output
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING id
         """,
         (
             image_name,
             image_path,
             crop_path,
+            class_label,
+            class_confidence,
+            top3_predictions,
             heatmap_path,
             result_image_path,
             anomaly_score,
@@ -72,6 +91,9 @@ def fetch_history():
             image_name,
             image_path,
             crop_path,
+            class_label,
+            class_confidence,
+            top3_predictions,
             heatmap_path,
             result_image_path,
             anomaly_score,

@@ -1,0 +1,12 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+.git/
+.idea/
+
+uploads/
+results/
+temp_runs/
+images/
+model_training_stuff/
