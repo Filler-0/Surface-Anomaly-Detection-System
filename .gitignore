@@ -8,3 +8,4 @@ results/
 .env
 .idea/
 *.pt
+datasets/

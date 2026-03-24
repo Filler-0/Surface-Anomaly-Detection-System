@@ -37,9 +37,9 @@ def create_single_image_temp_folder(image_path: Path) -> Path:
     return run_dir
 
 
-def run_anomaly_detector(image_dir: Path) -> str:
+def run_anomaly_detector(category: str, image_dir: Path) -> str:
     result = subprocess.run(
-        ["python", "wood_detector.py", str(image_dir)],
+        ["python", "multi_detector.py", category, str(image_dir)],
         capture_output=True,
         text=True,
         cwd=BASE_DIR,
@@ -126,7 +126,7 @@ def run_full_pipeline(saved_image_path: str) -> dict:
     temp_run_dir = create_single_image_temp_folder(crop_path)
     result["temp_run_dir"] = str(temp_run_dir)
 
-    anomaly_output = run_anomaly_detector(temp_run_dir)
+    anomaly_output = run_anomaly_detector(class_label, temp_run_dir)
     anomaly_verdict, anomaly_score = parse_anomaly_output(anomaly_output)
 
     result["anomaly_score"] = anomaly_score
