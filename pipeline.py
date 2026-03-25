@@ -108,10 +108,17 @@ def run_full_pipeline(saved_image_path: str) -> dict:
     }
 
     if class_label.lower() == "unknown":
+        suggestions_text = ", ".join(
+            f"{item['label']} ({item['confidence'] * 100:.1f}%)"
+            for item in top3_predictions
+        )
+
         result["verdict"] = "UNSUPPORTED_FORMAT"
         result["raw_output"] = (
-            "The uploaded product type is not supported by the system. "
-            "Anomaly detection cannot be performed."
+            "This object is not supported. Please upload only: "
+            "bottle, carpet, grid, tile, wood. "
+            f"Closest supported predictions were: {suggestions_text}. "
+            "Anomaly detection was not run."
         )
         return result
 

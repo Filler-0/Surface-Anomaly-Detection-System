@@ -107,7 +107,7 @@ with left_col:
 with right_col:
     st.markdown('<div class="info-card">', unsafe_allow_html=True)
     st.subheader("How it works")
-    st.write("1. Upload an image.")
+    st.write("1. Upload an image (supported: bottle, carpet, grid, tile and wood).")
     st.write("2. The system localises and classifies the object.")
     st.write("3. If the object is supported, anomaly detection is run.")
     st.write("4. The result is saved to database.")
