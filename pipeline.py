@@ -139,7 +139,7 @@ def run_full_pipeline(saved_image_path: str) -> dict:
     result["anomaly_score"] = anomaly_score
     result["result_image_path"] = find_latest_result_image()
 
-    if anomaly_score < ANOMALY_CONFIDENCE_THRESHOLD:
+    if anomaly_score < ANOMALY_CONFIDENCE_THRESHOLD and anomaly_verdict != 'NORMAL':
         result["verdict"] = "MANUAL_INSPECTION"
         result["raw_output"] = (
             f"Anomaly detection confidence is too low ({anomaly_score:.2f}%). "
