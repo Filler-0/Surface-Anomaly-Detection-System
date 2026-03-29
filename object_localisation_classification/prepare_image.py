@@ -1,69 +1,63 @@
 """
 Image Preparation Orchestrator
-Subsystem 1 + 2 combined entry point.
+Subsystem 2 entry point.
 
-Usage (from app.py or wood_detector.py):
+Usage from app.py or any downstream module:
     from object_localisation_classification.prepare_image import prepare_image
 
     result = prepare_image(pil_image)
-    # result["label"]      - "screw"
-    # result["confidence"] - 0.97
-    # result["cropped"]    - PIL.Image (the cropped ROI)
+    result["label"]      - class name, "unknown", "uncertain", or "rejected"
+    result["confidence"] - top-1 softmax score between 0.0 and 1.0
+    result["top3"]       - list of (label, score) pairs for the top 3 predictions
 """
 
 import torch
 from PIL import Image
-from .localiser  import load_localiser, localise
 from .classifier import load_classifier, classify
 
-# Auto-detect device - GPU if available, CPU otherwise
+# Use GPU if available, otherwise CPU
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-# Module-level singletons - loaded once, reused across calls
-_localiser_model      = None
+# Module-level singletons loaded once and reused across calls
 _classifier_model     = None
 _classifier_meta      = None
+_classifier_embed     = None
 _classifier_transform = None
 _device               = None
 
 
 def _init():
-    global _localiser_model, _classifier_model
-    global _classifier_meta, _classifier_transform, _device
-
-    if _localiser_model is None:
-        _localiser_model = load_localiser()
+    global _classifier_model, _classifier_meta, _classifier_embed, _classifier_transform, _device
 
     if _classifier_model is None:
-        _classifier_model, _classifier_meta, _classifier_transform, _device = \
-            load_classifier(DEVICE)
+        (
+            _classifier_model,
+            _classifier_meta,
+            _classifier_embed,
+            _classifier_transform,
+            _device,
+        ) = load_classifier(DEVICE)
 
 
 def prepare_image(pil_image: Image.Image) -> dict:
     """
-    Full pipeline: localise -> classify.
+    Classify a single image.
 
     Args:
-        pil_image: PIL.Image - raw uploaded image (cropped or uncropped)
+        pil_image: PIL.Image - raw uploaded image
 
-    Returns:
-        {
-            "label":      str,       - "screw", "wood", "unknown", ...
-            "confidence": float,     - 0.0 to 1.0
-            "top3":       list,      - top 3 (label, score) pairs
-            "cropped":    PIL.Image, - the ROI crop passed to classifier
-        }
+    Returns a dict with:
+    - label: str - predicted class, "unknown", "uncertain", or "rejected"
+    - confidence: float - top-1 softmax probability
+    - top3: list - top-3 (label, score) pairs
     """
     _init()
 
-    # Step 1 - Localise (crop ROI or passthrough)
-    cropped = localise(pil_image, model=_localiser_model)
-
-    # Step 2 - Classify
     result = classify(
-        cropped,
+        pil_image,
         model=_classifier_model,
         meta=_classifier_meta,
+        embed_data=_classifier_embed,
         transform=_classifier_transform,
         device=_device,
     )
@@ -72,5 +66,4 @@ def prepare_image(pil_image: Image.Image) -> dict:
         "label":      result["label"],
         "confidence": result["confidence"],
         "top3":       result["top3"],
-        "cropped":    cropped,
     }
