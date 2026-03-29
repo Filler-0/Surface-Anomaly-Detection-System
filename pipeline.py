@@ -88,9 +88,8 @@ def run_full_pipeline(saved_image_path: str) -> dict:
     class_label = prep_result["label"]
     class_confidence = float(prep_result["confidence"])
     top3_predictions = prep_result["top3"]
-    cropped_image = prep_result["cropped"]
 
-    crop_path = save_crop_image(cropped_image, saved_image_path.name)
+    crop_path = save_crop_image(pil_image, saved_image_path.name)
 
     result = {
         "image_path": str(saved_image_path),
@@ -109,8 +108,8 @@ def run_full_pipeline(saved_image_path: str) -> dict:
 
     if class_label.lower() == "unknown":
         suggestions_text = ", ".join(
-            f"{item['label']} ({item['confidence'] * 100:.1f}%)"
-            for item in top3_predictions
+            f"{label} ({score * 100:.1f}%)"
+            for label, score in top3_predictions
         )
 
         result["verdict"] = "UNSUPPORTED_FORMAT"
@@ -122,13 +121,23 @@ def run_full_pipeline(saved_image_path: str) -> dict:
         )
         return result
 
-    if class_confidence < CLASS_CONFIDENCE_THRESHOLD:
-        result["verdict"] = "MANUAL_INSPECTION"
+    if class_label.lower() == "rejected":
+        result["verdict"] = "UNSUPPORTED_FORMAT"
         result["raw_output"] = (
-            f"Classification confidence is too low ({class_confidence * 100:.1f}%). "
-            "The image should be reviewed manually."
+            "The image was rejected by the embedding gate as out-of-distribution. "
+            "Anomaly detection was not run."
         )
         return result
+
+    if class_label.lower() == "uncertain":
+        result["verdict"] = "UNSUPPORTED_FORMAT"
+        result["raw_output"] = (
+            "Classification confidence is spread across multiple classes with no clear winner. "
+            "Anomaly detection was not run."
+        )
+        return result
+
+
 
     temp_run_dir = create_single_image_temp_folder(crop_path)
     result["temp_run_dir"] = str(temp_run_dir)

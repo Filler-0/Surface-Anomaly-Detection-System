@@ -1,0 +1,26 @@
+{
+  "classes": [
+    "carpet",
+    "grid",
+    "leather",
+    "tile",
+    "wood"
+  ],
+  "unknown_class": "unknown",
+  "confidence_threshold": 0.8,
+  "num_classes": 5,
+  "class_to_idx": {
+    "carpet": 0,
+    "grid": 1,
+    "leather": 2,
+    "tile": 3,
+    "wood": 4
+  },
+  "idx_to_class": {
+    "0": "carpet",
+    "1": "grid",
+    "2": "leather",
+    "3": "tile",
+    "4": "wood"
+  }
+}
