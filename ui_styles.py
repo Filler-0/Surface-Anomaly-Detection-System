@@ -5,19 +5,25 @@ def inject_global_styles():
     st.markdown(
         """
         <style>
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
         .stApp {
-            background: #f8fafc;
+            font-family: "Manrope", "Segoe UI", sans-serif;
+            background:
+                radial-gradient(1200px 500px at 10% -10%, #dbeafe 0%, rgba(219, 234, 254, 0) 60%),
+                radial-gradient(900px 420px at 110% 0%, #dcfce7 0%, rgba(220, 252, 231, 0) 58%),
+                #f8fafc;
             color: #0f172a;
         }
 
         .block-container {
-            max-width: 1120px;
-            padding-top: 2rem;
-            padding-bottom: 2rem;
+            max-width: 1480px;
+            padding-top: 1.6rem;
+            padding-bottom: 2.1rem;
         }
 
         section[data-testid="stSidebar"] {
-            background: #ffffff;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
             border-right: 1px solid #e2e8f0;
             min-width: 260px !important;
             max-width: 260px !important;
@@ -25,6 +31,25 @@ def inject_global_styles():
 
         section[data-testid="stSidebar"] * {
             color: #0f172a !important;
+        }
+
+        section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a {
+            border-radius: 12px;
+            margin: 2px 4px;
+            padding: 6px 10px !important;
+            text-transform: lowercase;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+        }
+
+        section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a::first-letter {
+            text-transform: uppercase;
+            font-size: 1.25em;
+            font-weight: 800;
+        }
+
+        section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a:hover {
+            background: #eff6ff;
         }
 
         h1, h2, h3 {
@@ -38,17 +63,19 @@ def inject_global_styles():
         }
 
         .app-hero {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 20px;
-            padding: 28px;
-            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
-            margin-bottom: 1.25rem;
+            background:
+                linear-gradient(120deg, rgba(59, 130, 246, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%),
+                #ffffff;
+            border: 1px solid #dbe7f8;
+            border-radius: 22px;
+            padding: 28px 30px;
+            box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+            margin-bottom: 1.15rem;
         }
 
         .hero-title {
             font-size: 2.4rem;
-            font-weight: 700;
+            font-weight: 800;
             color: #0f172a;
             margin: 0 0 0.4rem 0;
         }
@@ -65,6 +92,20 @@ def inject_global_styles():
             border-radius: 18px;
             padding: 22px;
             box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
+
+        .app-card:hover {
+            box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+            transform: translateY(-1px);
+        }
+
+        .info-card {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            padding: 20px;
+            backdrop-filter: blur(3px);
         }
 
         .section-title {
@@ -81,8 +122,8 @@ def inject_global_styles():
         }
 
         div[data-testid="stFileUploader"] {
-            background: #f8fafc;
-            border: 1px dashed #cbd5e1;
+            background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+            border: 1px dashed #94a3b8;
             border-radius: 16px;
             padding: 10px;
         }
@@ -106,8 +147,8 @@ def inject_global_styles():
             font-weight: 700 !important;
             font-size: 1rem !important;
             color: #ffffff !important;
-            background: #2563eb !important;
-            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.22);
+            background: linear-gradient(90deg, #2563eb 0%, #0ea5e9 100%) !important;
+            box-shadow: 0 8px 18px rgba(37, 99, 235, 0.24);
         }
 
         div[data-testid="stButton"] > button p,
@@ -116,7 +157,7 @@ def inject_global_styles():
         }
 
         div[data-testid="stButton"] > button:hover {
-            background: #1d4ed8 !important;
+            filter: brightness(0.95);
         }
 
         div[data-testid="stMetric"] {
@@ -150,6 +191,26 @@ def inject_global_styles():
             border-radius: 16px;
             overflow: hidden;
             background: white;
+        }
+
+        div[data-testid="stTabs"] button[role="tab"] {
+            border-radius: 12px !important;
+            font-weight: 600 !important;
+        }
+
+        div[data-testid="stTabs"] button[aria-selected="true"] {
+            background: #eff6ff !important;
+            color: #1d4ed8 !important;
+            border: 1px solid #bfdbfe !important;
+        }
+
+        div[data-testid="stImage"] img {
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
+        }
+
+        div[data-testid="stProgressBar"] > div > div > div > div {
+            background: linear-gradient(90deg, #22c55e 0%, #14b8a6 100%) !important;
         }
 
         .status-normal {
@@ -197,36 +258,42 @@ def inject_global_styles():
         }
 
         .kpi-card {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            border: 1px solid #dbe7f8;
             border-radius: 18px;
             padding: 20px;
-            min-height: 132px;
-            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+            min-height: 186px;
+            height: 186px;
+            box-shadow: 0 12px 26px rgba(15, 23, 42, 0.07);
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            box-sizing: border-box;
+            overflow: hidden;
         }
 
         .kpi-label {
             color: #64748b;
-            font-size: 0.92rem;
+            font-size: 1rem;
             font-weight: 600;
-            margin-bottom: 14px;
+            margin-bottom: 10px;
+            line-height: 1.35;
+            overflow-wrap: anywhere;
         }
 
         .kpi-value {
             color: #0f172a;
-            font-size: 2.2rem;
+            font-size: 2.5rem;
             font-weight: 750;
             line-height: 1;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
         .kpi-sub {
             color: #94a3b8;
-            font-size: 0.86rem;
+            font-size: 0.9rem;
             line-height: 1.4;
+            overflow-wrap: anywhere;
         }
         </style>
         """,

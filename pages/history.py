@@ -7,7 +7,7 @@ from PIL import Image
 from db import fetch_history
 from ui_styles import inject_global_styles, render_hero, verdict_badge
 
-st.set_page_config(page_title="History", page_icon="🕘", layout="wide")
+st.set_page_config(page_title="History", page_icon="??")
 inject_global_styles()
 
 render_hero(

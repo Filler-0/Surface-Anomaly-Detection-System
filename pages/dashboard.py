@@ -5,7 +5,7 @@ import streamlit as st
 from db import fetch_history
 from ui_styles import inject_global_styles, render_hero, render_kpi, open_card, close_card
 
-st.set_page_config(page_title="Dashboard", page_icon="📊", layout="wide")
+st.set_page_config(page_title="Dashboard", page_icon="??")
 inject_global_styles()
 
 render_hero(
@@ -148,7 +148,7 @@ if not known_classes.empty:
 else:
     most_common_class = "N/A"
 
-k1, k2, k3, k4, k5, k6 = st.columns(6, gap="medium")
+k1, k2, k3, k4, k5, k6 = st.columns(6, gap="medium", vertical_alignment="top")
 
 with k1:
     render_kpi("Total inspections", str(total_inspections), "All records")

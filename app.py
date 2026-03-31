@@ -14,7 +14,7 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
 st.set_page_config(
     page_title="Surface Anomaly Detection System",
-    page_icon="🔎",
+    page_icon="??",
     layout="wide",
 )
 
