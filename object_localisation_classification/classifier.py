@@ -245,7 +245,7 @@ def classify(
     device: str = "cpu",
 ) -> dict:
     """
-    Classify a cropped object image using MobileNetV3-Small and the embedding gate.
+    Classify a prepared object image using MobileNetV3-Small and the embedding gate.
 
     Returns a dict with:
     - label: final decision string used by the downstream pipeline

@@ -83,10 +83,6 @@ for row in rows:
             if original_image is not None:
                 st.image(original_image, caption="Original image", width="stretch")
 
-            crop_image = safe_open_image(row["crop_path"])
-            if crop_image is not None:
-                st.image(crop_image, caption="Cropped ROI", width="stretch")
-
             result_image = safe_open_image(row["result_image_path"])
             if result_image is not None:
                 st.image(result_image, caption="Result visualization", width="stretch")

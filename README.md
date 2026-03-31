@@ -10,7 +10,7 @@ The system allows users to upload an image of a surface, automatically detect th
 
 This project combines multiple machine learning components into a single pipeline:
 
-1. **Object localisation** – crops the relevant region of the image.
+1. **Object localisation** – prepares the relevant region of the image for classification.
 2. **Product classification** – identifies the object type.
 3. **Anomaly detection** – detects defects on the surface.
 4. **Visualization** – displays anomaly heatmaps and prediction masks.

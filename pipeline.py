@@ -12,20 +12,12 @@ from object_localisation_classification.prepare_image import prepare_image
 BASE_DIR = Path(__file__).parent
 TEMP_RUNS_DIR = BASE_DIR / "temp_runs"
 RESULTS_DIR = BASE_DIR / "results"
-CROPS_DIR = BASE_DIR / "uploads" / "crops"
 
 TEMP_RUNS_DIR.mkdir(parents=True, exist_ok=True)
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-CROPS_DIR.mkdir(parents=True, exist_ok=True)
 
 CLASS_CONFIDENCE_THRESHOLD = 0.75
 ANOMALY_CONFIDENCE_THRESHOLD = 60.0
-
-
-def save_crop_image(cropped_image: Image.Image, original_name: str) -> Path:
-    crop_path = CROPS_DIR / f"{uuid.uuid4()}_{original_name}"
-    cropped_image.save(crop_path)
-    return crop_path
 
 
 def create_single_image_temp_folder(image_path: Path) -> Path:
@@ -89,11 +81,8 @@ def run_full_pipeline(saved_image_path: str) -> dict:
     class_confidence = float(prep_result["confidence"])
     top3_predictions = prep_result["top3"]
 
-    crop_path = save_crop_image(pil_image, saved_image_path.name)
-
     result = {
         "image_path": str(saved_image_path),
-        "crop_path": str(crop_path),
         "class_label": class_label,
         "class_confidence": class_confidence,
         "top3_predictions": json.dumps(top3_predictions),
@@ -137,9 +126,7 @@ def run_full_pipeline(saved_image_path: str) -> dict:
         )
         return result
 
-
-
-    temp_run_dir = create_single_image_temp_folder(crop_path)
+    temp_run_dir = create_single_image_temp_folder(saved_image_path)
     result["temp_run_dir"] = str(temp_run_dir)
 
     anomaly_output = run_anomaly_detector(class_label, temp_run_dir)

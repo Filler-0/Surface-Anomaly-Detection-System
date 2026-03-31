@@ -14,7 +14,7 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
 st.set_page_config(
     page_title="Surface Anomaly Detection System",
-    page_icon="??",
+    page_icon="🔎",
     layout="wide",
 )
 
@@ -138,7 +138,6 @@ if uploaded_files and analyze_clicked:
             inspection_id = insert_inspection(
                 image_name=uploaded_file.name,
                 image_path=pipeline_result["image_path"],
-                crop_path=pipeline_result["crop_path"],
                 class_label=pipeline_result["class_label"],
                 class_confidence=pipeline_result["class_confidence"],
                 top3_predictions=pipeline_result["top3_predictions"],
@@ -154,9 +153,9 @@ if uploaded_files and analyze_clicked:
             class_col1, class_col2 = st.columns([1, 1], gap="large")
 
             with class_col1:
-                crop_image = safe_open_image(pipeline_result["crop_path"])
-                if crop_image is not None:
-                    st.image(crop_image, width="stretch")
+                original_image = safe_open_image(pipeline_result["image_path"])
+                if original_image is not None:
+                    st.image(original_image, caption="Input image", width="stretch")
 
             with class_col2:
                 st.metric("Object type", pipeline_result["class_label"].upper())

@@ -2,7 +2,6 @@ CREATE TABLE IF NOT EXISTS inspections (
     id SERIAL PRIMARY KEY,
     image_name VARCHAR(255) NOT NULL,
     image_path TEXT NOT NULL,
-    crop_path TEXT,
     class_label TEXT,
     class_confidence DOUBLE PRECISION,
     top3_predictions TEXT,

@@ -30,7 +30,6 @@ def test_connection():
 def insert_inspection(
     image_name,
     image_path,
-    crop_path,
     class_label,
     class_confidence,
     top3_predictions,
@@ -47,7 +46,6 @@ def insert_inspection(
         INSERT INTO inspections (
             image_name,
             image_path,
-            crop_path,
             class_label,
             class_confidence,
             top3_predictions,
@@ -57,13 +55,12 @@ def insert_inspection(
             verdict,
             raw_output
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING id
         """,
         (
             image_name,
             image_path,
-            crop_path,
             class_label,
             class_confidence,
             top3_predictions,
@@ -90,7 +87,6 @@ def fetch_history():
             id,
             image_name,
             image_path,
-            crop_path,
             class_label,
             class_confidence,
             top3_predictions,
