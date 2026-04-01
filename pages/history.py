@@ -132,7 +132,60 @@ if not rows:
     st.info("No inspection history found yet.")
     st.stop()
 
-for row in rows:
+# --- Filters ---
+# Derive available options from actual data
+all_classes = sorted({class_label_for_display(r) for r in rows})
+all_verdicts = sorted({(r.get("verdict") or "N/A").upper() for r in rows})
+
+st.markdown("### Filters")
+filter_col1, filter_col2, filter_col3 = st.columns([2, 2, 1])
+
+with filter_col1:
+    selected_classes = st.multiselect(
+        "Filter by class type",
+        options=all_classes,
+        default=[],
+        placeholder="All classes",
+    )
+
+with filter_col2:
+    selected_verdicts = st.multiselect(
+        "Filter by verdict",
+        options=all_verdicts,
+        default=[],
+        placeholder="All verdicts",
+    )
+
+with filter_col3:
+    sort_order = st.selectbox(
+        "Sort by",
+        options=["Newest first", "Oldest first"],
+        index=0,
+    )
+
+st.divider()
+
+# --- Apply filters ---
+filtered_rows = rows
+
+if selected_classes:
+    filtered_rows = [r for r in filtered_rows if class_label_for_display(r) in selected_classes]
+
+if selected_verdicts:
+    filtered_rows = [r for r in filtered_rows if (r.get("verdict") or "N/A").upper() in selected_verdicts]
+
+if sort_order == "Oldest first":
+    filtered_rows = list(reversed(filtered_rows))
+
+# --- Results summary ---
+st.caption(f"Showing {len(filtered_rows)} of {len(rows)} inspections")
+
+if not filtered_rows:
+    st.warning("No inspections match the selected filters.")
+    st.stop()
+
+# --- Render rows ---
+for row in filtered_rows:
     display_class = class_label_for_display(row)
     class_token = class_badge_token(display_class)
     verdict_token = verdict_badge_token(row["verdict"])

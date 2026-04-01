@@ -10,14 +10,10 @@ numpy>=1.24
 
 matplotlib>=3.7
 
-# Subsystem 1 - ROI Extraction
-opencv-python>=4.8
-
 # Subsystem 2 - Object Classification
-open-clip-torch>=2.20
 torch>=2.0
 torchvision>=0.15
-safetensors>=0.4
+
 
 # Subsystem 3 - Anomaly Detection
 anomalib

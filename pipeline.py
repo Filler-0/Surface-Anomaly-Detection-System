@@ -19,11 +19,14 @@ RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 CLASS_CONFIDENCE_THRESHOLD = 0.75
 ANOMALY_CONFIDENCE_THRESHOLD = 15.0
 
+# -----------------------------------------------------------------------
+MODE = "Recognition"   # "Classifier"  or  "Recognition"
+# -----------------------------------------------------------------------
+
 
 def create_single_image_temp_folder(image_path: Path) -> Path:
     run_dir = TEMP_RUNS_DIR / str(uuid.uuid4())
     run_dir.mkdir(parents=True, exist_ok=True)
-
     temp_image_path = run_dir / image_path.name
     shutil.copy(image_path, temp_image_path)
     return run_dir
@@ -36,24 +39,19 @@ def run_anomaly_detector(category: str, image_dir: Path) -> str:
         text=True,
         cwd=BASE_DIR,
     )
-
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or result.stdout.strip() or "Anomaly detector failed.")
-
     return result.stdout.strip()
 
 
 def parse_anomaly_output(output: str) -> tuple[str, float]:
     anomalous_match = re.search(r"(.+) is anomalous with ([0-9.]+)% certainty", output)
     normal_match = re.search(r"(.+) is normal", output)
-
     if anomalous_match:
         score = float(anomalous_match.group(2))
         return "ANOMALOUS", score
-
     if normal_match:
         return "NORMAL", 0.0
-
     raise ValueError(f"Unexpected anomaly detector output: {output}")
 
 
@@ -63,21 +61,24 @@ def find_latest_result_image() -> str | None:
         path for path in RESULTS_DIR.rglob("*")
         if path.is_file() and path.suffix.lower() in image_extensions
     ]
-
     if not candidates:
         return None
-
     latest_file = max(candidates, key=lambda p: p.stat().st_mtime)
     return str(latest_file)
 
 
 def run_full_pipeline(saved_image_path: str) -> dict:
     saved_image_path = Path(saved_image_path)
-
     pil_image = Image.open(saved_image_path).convert("RGB")
-    prep_result = prepare_image(pil_image)
 
-    class_label = prep_result["label"]
+    #  Mode switch — only change needed
+    if MODE == "Recognition":
+        from future_integration.prototype_recognition import recognize
+        prep_result = recognize(pil_image)
+    else:
+        prep_result = prepare_image(pil_image)
+
+    class_label      = prep_result["label"]
     class_confidence = float(prep_result["confidence"])
     top3_predictions = prep_result["top3"]
 
@@ -100,7 +101,6 @@ def run_full_pipeline(saved_image_path: str) -> dict:
             f"{label} ({score * 100:.1f}%)"
             for label, score in top3_predictions
         )
-
         result["verdict"] = "UNSUPPORTED_FORMAT"
         result["raw_output"] = (
             "This object is not supported. Please upload only: "
