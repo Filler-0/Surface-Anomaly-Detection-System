@@ -89,7 +89,7 @@ def render_top3(top3_predictions_json: str | None):
     st.write("Top 3 predictions")
     for cls_name, cls_score in top3:
         st.write(f"- **{cls_name}** - {cls_score * 100:.1f}%")
-        st.progress(float(cls_score))
+        st.progress(max(0.0, min(1.0, float(cls_score))))
 
 
 def get_verdict_style(verdict: str) -> tuple[str, str, str]:

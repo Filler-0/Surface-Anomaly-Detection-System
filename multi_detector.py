@@ -23,7 +23,10 @@ warnings.filterwarnings('ignore')
 category = sys.argv[1]
 
 BASE_DIR = Path(__file__).resolve().parent
-CKPT_PATH = BASE_DIR / "models" / f"stfpm_{category}.ckpt"
+# CKPT_PATH = BASE_DIR / "models" / f"stfpm_{category}.ckpt"
+NEW_CKPT  = BASE_DIR / "future_integration" / "models" / "new_stfpm" / f"stfpm_{category}.ckpt"
+OLD_CKPT  = BASE_DIR / "models" / f"stfpm_{category}.ckpt"
+CKPT_PATH = OLD_CKPT if OLD_CKPT.exists() else NEW_CKPT
 
 engine = Engine()
 
