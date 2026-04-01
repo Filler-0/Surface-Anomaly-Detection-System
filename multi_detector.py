@@ -46,14 +46,17 @@ predictions = engine.predict(
     ckpt_path=CKPT_PATH,
 )
 
+# unnormed_thresh = engine._trainer.callbacks[4]._buffers['_image_threshold']
+# print(engine._trainer.__dict__)
+
 for prediction in predictions:
     image_path = prediction.image_path
-    anomaly_map = prediction.anomaly_map  # Pixel-level anomaly heatmap
+    # anomaly_map = prediction.anomaly_map  # Pixel-level anomaly heatmap
     pred_label = prediction.pred_label  # Image-level label (0: normal, 1: anomalous)
-    pred_score = prediction.pred_score
-    if bool(pred_label[0]):
-        print(f'{image_path[0]} is anomalous with {round(100*float(pred_score[0]),2)}% certainty')
-    else:
-        print(f'{image_path[0]} is normal')
+    text_label = 'anomalous' if bool(pred_label[0]) else 'normal'
+    pred_score = 100*float(prediction.pred_score[0])
+    certainity_score = abs(50 - pred_score)*2
+    additional_info = f'with {round(certainity_score,2)}% certainty'*pred_label
+    print(f'{image_path[0]} is {text_label}', additional_info)
 
 
