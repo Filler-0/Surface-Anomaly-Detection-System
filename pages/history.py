@@ -42,14 +42,23 @@ def format_ratio(score):
     return f"{score * 100:.1f}%"
 
 
-def render_top3(top3_json: str | None):
+def parse_top3(top3_json: str | None):
     if not top3_json:
-        st.write("**Top-3 predictions:** N/A")
-        return
+        return []
 
     try:
-        top3 = json.loads(top3_json)
+        parsed = json.loads(top3_json)
+        if isinstance(parsed, list):
+            return parsed
     except Exception:
+        return []
+
+    return []
+
+
+def render_top3(top3_json: str | None):
+    top3 = parse_top3(top3_json)
+    if not top3:
         st.write("**Top-3 predictions:** N/A")
         return
 
@@ -58,36 +67,63 @@ def render_top3(top3_json: str | None):
         st.write(f"- {cls_name}: {cls_score * 100:.1f}%")
 
 
+def is_unsupported(row: dict) -> bool:
+    return (row.get("verdict") or "").upper() == "UNSUPPORTED_FORMAT"
+
+
 def class_label_for_display(row: dict) -> str:
     class_label = (row.get("class_label") or "N/A").upper()
-    if (row.get("verdict") or "").upper() == "UNSUPPORTED_FORMAT":
-        if class_label in {"REJECTED", "UNKNOWN", "UNCERTAIN"}:
-            return "UNSUPPORTED FORMAT"
+    if is_unsupported(row) and class_label in {"REJECTED", "UNKNOWN", "UNCERTAIN"}:
+        return "UNSUPPORTED FORMAT"
     return class_label
 
 
 def class_badge_token(label: str) -> str:
     color_map = {
-        "CARPET": "🟫",
-        "GRID": "🟦",
-        "TILE": "⬜",
-        "WOOD": "🟧",
-        "LEATHER": "🟤",
-        "UNSUPPORTED FORMAT": "🟪",
+        "CARPET": "\U0001F7EB",
+        "GRID": "\U0001F7E6",
+        "TILE": "\u2B1C",
+        "WOOD": "\U0001F7E7",
+        "LEATHER": "\U0001F7E4",
+        "UNSUPPORTED FORMAT": "\U0001F7EA",
     }
-    token = color_map.get(label, "🔹")
+    token = color_map.get(label, "\U0001F539")
     return f"{token} [{label}]"
 
 
 def verdict_badge_token(verdict: str) -> str:
     verdict_upper = (verdict or "").upper()
     if verdict_upper == "NORMAL":
-        return "🟢 [NORMAL]"
+        return "\U0001F7E2 [NORMAL]"
     if verdict_upper == "ANOMALOUS":
-        return "🔴 [ANOMALOUS]"
+        return "\U0001F534 [ANOMALOUS]"
     if verdict_upper == "MANUAL_INSPECTION":
-        return "🟠 [MANUAL_INSPECTION]"
-    return "🟣 [UNSUPPORTED_FORMAT]"
+        return "\U0001F7E0 [MANUAL_INSPECTION]"
+    return "\U0001F7E3 [UNSUPPORTED_FORMAT]"
+
+
+def build_technical_details(row: dict, display_class: str) -> dict:
+    return {
+        "inspection_id": row["id"],
+        "uploaded_file": row["image_name"],
+        "image_path": row["image_path"],
+        "class_label": display_class,
+        "class_confidence_percent": (
+            round(float(row["class_confidence"]) * 100.0, 2)
+            if row["class_confidence"] is not None
+            else None
+        ),
+        "verdict": row["verdict"],
+        "anomaly_score_percent": (
+            round(float(row["anomaly_score"]), 2)
+            if row["anomaly_score"] is not None
+            else None
+        ),
+        "result_image_path": row["result_image_path"],
+        "top3_predictions": parse_top3(row["top3_predictions"]),
+        "created_at": str(row["created_at"]),
+        "raw_output": row["raw_output"],
+    }
 
 
 rows = fetch_history()
@@ -107,16 +143,19 @@ for row in rows:
 
     with st.expander(expander_title):
         left_col, right_col = st.columns([1, 1], gap="large")
+        unsupported = is_unsupported(row)
 
         with left_col:
             st.write(f"**Image Name:** {row['image_name']}")
             st.write(f"**Class label:** {display_class}")
-            st.write(f"**Class confidence:** {format_ratio(row['class_confidence'])}")
+            if not unsupported:
+                st.write(f"**Class confidence:** {format_ratio(row['class_confidence'])}")
             st.write(f"**Anomaly score:** {format_score(row['anomaly_score'])}")
             st.write("**Verdict:**")
             verdict_badge(row["verdict"])
             st.write(f"**Created At:** {row['created_at']}")
-            render_top3(row["top3_predictions"])
+            if not unsupported:
+                render_top3(row["top3_predictions"])
 
         with right_col:
             original_image = safe_open_image(row["image_path"])
@@ -128,4 +167,6 @@ for row in rows:
                 st.image(result_image, caption="Result visualization", width="stretch")
 
         with st.expander("Technical output"):
-            st.code(row["raw_output"] or "No technical output saved.")
+            technical_details = build_technical_details(row, display_class)
+            st.json(technical_details)
+            st.code(row["raw_output"] or "No technical output saved.", language="text")
