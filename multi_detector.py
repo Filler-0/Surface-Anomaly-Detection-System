@@ -10,7 +10,7 @@ print('Importing libraries... It may take some time')
 from anomalib.data import PredictDataset
 from anomalib.models import Stfpm
 from anomalib.engine import Engine
-from anomalib.post_processing import PostProcessor
+# from anomalib.post_processing import PostProcessor
 
 # Suppress all warnings and logging (for production)
 import logging
@@ -33,11 +33,12 @@ dataset = PredictDataset(
 )
 
 # Custom threshold
-post_processor = PostProcessor(
-    image_sensitivity=0.3,
-    pixel_sensitivity=0.3,
-)
-model = Stfpm(post_processor=post_processor)
+# post_processor = PostProcessor(
+#     image_sensitivity=0.3,
+#     pixel_sensitivity=0.3,
+# )
+# model = Stfpm(post_processor=post_processor)
+model = Stfpm()
 
 predictions = engine.predict(
     model=model,
