@@ -67,19 +67,82 @@ def format_percent(value):
     return f"{value:.2f}%"
 
 
-def render_top3(top3_predictions_json: str | None):
+def parse_top3_predictions(top3_predictions_json: str | None):
     if not top3_predictions_json:
-        return
+        return []
 
     try:
-        top3 = json.loads(top3_predictions_json)
+        parsed = json.loads(top3_predictions_json)
+        if isinstance(parsed, list):
+            return parsed
     except Exception:
+        return []
+
+    return []
+
+
+def render_top3(top3_predictions_json: str | None):
+    top3 = parse_top3_predictions(top3_predictions_json)
+    if not top3:
         return
 
     st.write("Top 3 predictions")
     for cls_name, cls_score in top3:
         st.write(f"- **{cls_name}** - {cls_score * 100:.1f}%")
         st.progress(float(cls_score))
+
+
+def get_verdict_style(verdict: str) -> tuple[str, str, str]:
+    styles = {
+        "UNSUPPORTED_FORMAT": ("Unsupported format", "#ef4444", "#fef2f2"),
+        "MANUAL_INSPECTION": ("Manual inspection required", "#f59e0b", "#fff7ed"),
+        "ANOMALOUS": ("Anomalous", "#dc2626", "#fef2f2"),
+        "NORMAL": ("Normal", "#16a34a", "#f0fdf4"),
+    }
+    return styles.get(verdict, (verdict.replace("_", " ").title(), "#64748b", "#f8fafc"))
+
+
+def render_verdict_metric_card(verdict: str):
+    verdict_text, verdict_color, verdict_bg = get_verdict_style(verdict)
+    st.markdown(
+        f"""
+        <div style="
+            border: 1px solid {verdict_color};
+            border-radius: 16px;
+            padding: 14px;
+            background: {verdict_bg};
+            min-height: 96px;
+            box-sizing: border-box;
+        ">
+            <div style="font-size: 0.92rem; color: #64748b; margin-bottom: 8px;">Verdict</div>
+            <div style="font-size: 1.05rem; font-weight: 700; color: {verdict_color}; line-height: 1.2;">{verdict_text.upper()}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def build_technical_details(uploaded_name: str, pipeline_result: dict, inspection_id: int) -> dict:
+    return {
+        "inspection_id": inspection_id,
+        "uploaded_file": uploaded_name,
+        "image_path": pipeline_result["image_path"],
+        "class_label": pipeline_result["class_label"],
+        "class_confidence_percent": (
+            round(float(pipeline_result["class_confidence"]) * 100.0, 2)
+            if pipeline_result["class_confidence"] is not None
+            else None
+        ),
+        "verdict": pipeline_result["verdict"],
+        "anomaly_score_percent": (
+            round(float(pipeline_result["anomaly_score"]), 2)
+            if pipeline_result["anomaly_score"] is not None
+            else None
+        ),
+        "result_image_path": pipeline_result["result_image_path"],
+        "top3_predictions": parse_top3_predictions(pipeline_result["top3_predictions"]),
+        "raw_output": pipeline_result["raw_output"],
+    }
 
 
 left_col, right_col = st.columns([1.1, 0.9], gap="large")
@@ -151,6 +214,14 @@ if uploaded_files and analyze_clicked:
             st.subheader("Step 1 - Object classification")
 
             class_col1, class_col2 = st.columns([1, 1], gap="large")
+            verdict = pipeline_result["verdict"]
+            class_label = pipeline_result["class_label"]
+            top3_hidden_for_unsupported = verdict == "UNSUPPORTED_FORMAT"
+            display_object_type = (
+                "UNSUPPORTED FORMAT"
+                if top3_hidden_for_unsupported and class_label.lower() in {"rejected", "unknown", "uncertain"}
+                else class_label.upper()
+            )
 
             with class_col1:
                 original_image = safe_open_image(pipeline_result["image_path"])
@@ -158,38 +229,41 @@ if uploaded_files and analyze_clicked:
                     st.image(original_image, caption="Input image", width="stretch")
 
             with class_col2:
-                st.metric("Object type", pipeline_result["class_label"].upper())
-                st.metric("Confidence", format_percent_from_ratio(pipeline_result["class_confidence"]))
-                render_top3(pipeline_result["top3_predictions"])
+                st.metric("Object type", display_object_type)
+                if top3_hidden_for_unsupported:
+                    st.caption("Confidence hidden for unsupported formats.")
+                    st.caption("Top-3 predictions hidden for unsupported formats.")
+                else:
+                    st.metric("Confidence", format_percent_from_ratio(pipeline_result["class_confidence"]))
+                    render_top3(pipeline_result["top3_predictions"])
 
             st.markdown("---")
             st.subheader("Step 2 - Final decision")
-
-            verdict = pipeline_result["verdict"]
+            m1, m2, m3, m4 = st.columns(4)
+            with m1:
+                st.metric("Object class", display_object_type)
+            with m2:
+                class_conf_display = (
+                    "N/A"
+                    if top3_hidden_for_unsupported
+                    else format_percent_from_ratio(pipeline_result["class_confidence"])
+                )
+                st.metric("Class confidence", class_conf_display)
+            with m3:
+                render_verdict_metric_card(verdict)
+            with m4:
+                st.metric("Anomaly score", format_percent(pipeline_result["anomaly_score"]))
 
             if verdict == "UNSUPPORTED_FORMAT":
-                st.warning("The uploaded product format/type is not supported by the system.")
+                st.error("Unsupported format: anomaly detection was not run.")
                 st.info(f"Record #{inspection_id} saved with status: UNSUPPORTED_FORMAT")
 
             elif verdict == "MANUAL_INSPECTION":
-                st.warning("The image should be sent for manual inspection.")
+                st.warning("Manual inspection required: automated confidence is insufficient.")
                 st.info(f"Record #{inspection_id} saved with status: MANUAL_INSPECTION")
-
-                if pipeline_result["anomaly_score"] is not None:
-                    st.metric("Anomaly confidence", format_percent(pipeline_result["anomaly_score"]))
 
             else:
                 st.success(f"Analysis complete. Record #{inspection_id} saved.")
-
-                m1, m2, m3, m4 = st.columns(4)
-                with m1:
-                    st.metric("Object class", pipeline_result["class_label"].upper())
-                with m2:
-                    st.metric("Class confidence", format_percent_from_ratio(pipeline_result["class_confidence"]))
-                with m3:
-                    st.metric("Verdict", pipeline_result["verdict"])
-                with m4:
-                    st.metric("Anomaly score", format_percent(pipeline_result["anomaly_score"]))
 
                 open_card("Detection result", "Generated model visualization.")
                 if pipeline_result["result_image_path"]:
@@ -207,7 +281,9 @@ if uploaded_files and analyze_clicked:
                 close_card()
 
             with st.expander(f"Technical output ({uploaded_file.name})"):
-                st.code(pipeline_result["raw_output"] or "No technical output saved.")
+                technical_details = build_technical_details(uploaded_file.name, pipeline_result, inspection_id)
+                st.json(technical_details)
+                st.code(pipeline_result["raw_output"] or "No technical output saved.", language="text")
 
         except Exception as e:
             st.error(f"{uploaded_file.name}: {e}")

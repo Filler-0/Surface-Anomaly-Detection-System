@@ -58,6 +58,38 @@ def render_top3(top3_json: str | None):
         st.write(f"- {cls_name}: {cls_score * 100:.1f}%")
 
 
+def class_label_for_display(row: dict) -> str:
+    class_label = (row.get("class_label") or "N/A").upper()
+    if (row.get("verdict") or "").upper() == "UNSUPPORTED_FORMAT":
+        if class_label in {"REJECTED", "UNKNOWN", "UNCERTAIN"}:
+            return "UNSUPPORTED FORMAT"
+    return class_label
+
+
+def class_badge_token(label: str) -> str:
+    color_map = {
+        "CARPET": "🟫",
+        "GRID": "🟦",
+        "TILE": "⬜",
+        "WOOD": "🟧",
+        "LEATHER": "🟤",
+        "UNSUPPORTED FORMAT": "🟪",
+    }
+    token = color_map.get(label, "🔹")
+    return f"{token} [{label}]"
+
+
+def verdict_badge_token(verdict: str) -> str:
+    verdict_upper = (verdict or "").upper()
+    if verdict_upper == "NORMAL":
+        return "🟢 [NORMAL]"
+    if verdict_upper == "ANOMALOUS":
+        return "🔴 [ANOMALOUS]"
+    if verdict_upper == "MANUAL_INSPECTION":
+        return "🟠 [MANUAL_INSPECTION]"
+    return "🟣 [UNSUPPORTED_FORMAT]"
+
+
 rows = fetch_history()
 
 if not rows:
@@ -65,12 +97,20 @@ if not rows:
     st.stop()
 
 for row in rows:
-    with st.expander(f"#{row['id']} | {row['image_name']} | {row['created_at']}"):
+    display_class = class_label_for_display(row)
+    class_token = class_badge_token(display_class)
+    verdict_token = verdict_badge_token(row["verdict"])
+    expander_title = (
+        f"#{row['id']} | {row['image_name']} | {row['created_at']} | "
+        f"{class_token} {verdict_token}"
+    )
+
+    with st.expander(expander_title):
         left_col, right_col = st.columns([1, 1], gap="large")
 
         with left_col:
             st.write(f"**Image Name:** {row['image_name']}")
-            st.write(f"**Class label:** {row['class_label'] or 'N/A'}")
+            st.write(f"**Class label:** {display_class}")
             st.write(f"**Class confidence:** {format_ratio(row['class_confidence'])}")
             st.write(f"**Anomaly score:** {format_score(row['anomaly_score'])}")
             st.write("**Verdict:**")
