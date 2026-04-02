@@ -21,7 +21,6 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 # Module-level singletons loaded once and reused across calls
 _classifier_model     = None
 _classifier_meta      = None
-_classifier_embed     = None
 _classifier_transform = None
 _device               = None
 
@@ -33,7 +32,6 @@ def _init():
         (
             _classifier_model,
             _classifier_meta,
-            _classifier_embed,
             _classifier_transform,
             _device,
         ) = load_classifier(DEVICE)
@@ -57,7 +55,6 @@ def prepare_image(pil_image: Image.Image) -> dict:
         pil_image,
         model=_classifier_model,
         meta=_classifier_meta,
-        embed_data=_classifier_embed,
         transform=_classifier_transform,
         device=_device,
     )
