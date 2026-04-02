@@ -160,6 +160,22 @@ def inject_global_styles():
             filter: brightness(0.95);
         }
 
+        div[data-testid="stButton"] > button[kind="secondary"] {
+            color: #1f2937 !important;
+            border: 1px solid #cbd5e1 !important;
+            background: linear-gradient(90deg, #cbd5e1 0%, #94a3b8 100%) !important;
+            box-shadow: 0 8px 18px rgba(51, 65, 85, 0.2);
+        }
+
+        div[data-testid="stButton"] > button[kind="secondary"] p,
+        div[data-testid="stButton"] > button[kind="secondary"] span {
+            color: #1f2937 !important;
+        }
+
+        div[data-testid="stButton"] > button[kind="secondary"]:hover {
+            filter: brightness(0.98);
+        }
+
         div[data-testid="stMetric"] {
             background: #ffffff;
             border: 1px solid #e2e8f0;

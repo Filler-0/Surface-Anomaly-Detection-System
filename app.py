@@ -148,13 +148,21 @@ def build_technical_details(uploaded_name: str, pipeline_result: dict, inspectio
 left_col, right_col = st.columns([1.1, 0.9], gap="large")
 
 with left_col:
+    if "main_uploader_version" not in st.session_state:
+        st.session_state.main_uploader_version = 0
+
     open_card("Upload images", "Choose one or more JPG or PNG images to start analysis.")
     uploaded_files = st.file_uploader(
         "Choose JPG or PNG images",
         type=["jpg", "jpeg", "png"],
         accept_multiple_files=True,
         label_visibility="collapsed",
+        key=f"main_uploader_{st.session_state.main_uploader_version}",
     )
+
+    if st.session_state.get("uploads_cleared_message"):
+        st.info(st.session_state.uploads_cleared_message)
+        del st.session_state["uploads_cleared_message"]
 
     if uploaded_files:
         st.caption(f"{len(uploaded_files)} image(s) selected")
@@ -170,7 +178,17 @@ with left_col:
             with preview_cols[idx % 3]:
                 st.image(preview_image, caption=uploaded_file.name, width="stretch")
 
-    analyze_clicked = st.button("Analyze")
+    action_col_1, action_col_2 = st.columns(2, gap="small")
+    with action_col_1:
+        analyze_clicked = st.button("Analyze", type="primary", use_container_width=True)
+    with action_col_2:
+        clear_clicked = st.button("Clear selection", type="secondary", use_container_width=True)
+
+    if clear_clicked:
+        st.session_state.main_uploader_version += 1
+        st.session_state.uploads_cleared_message = "Selection cleared. You can choose new files now."
+        st.rerun()
+
     close_card()
 
 with right_col:
