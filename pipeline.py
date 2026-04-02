@@ -17,7 +17,7 @@ TEMP_RUNS_DIR.mkdir(parents=True, exist_ok=True)
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 CLASS_CONFIDENCE_THRESHOLD = 0.75
-ANOMALY_CONFIDENCE_THRESHOLD = 15.0
+ANOMALY_CONFIDENCE_THRESHOLD = 55.0
 
 # -----------------------------------------------------------------------
 MODE = "Classifier"   # "Classifier"  or  "Recognition"
