@@ -21,7 +21,7 @@ BANK_PATH       = MODELS_DIR / "bank_resnet18_multi_proto.pth"
 IMG_SIZE             = 224
 EMBEDDING_DIM        = 128
 DROPOUT              = 0.2
-CONFIDENCE_THRESHOLD = 0.98
+CONFIDENCE_THRESHOLD = 0.96
 MARGIN_THRESHOLD     = 0.05
 
 _MEAN = [0.485, 0.456, 0.406]

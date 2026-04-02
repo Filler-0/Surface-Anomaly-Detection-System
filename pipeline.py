@@ -20,7 +20,7 @@ CLASS_CONFIDENCE_THRESHOLD = 0.75
 ANOMALY_CONFIDENCE_THRESHOLD = 15.0
 
 # -----------------------------------------------------------------------
-MODE = "Classifier"   # "Classifier"  or  "Recognition"
+MODE = "Recogniser"   # "Classifier"  or  "Recognition"
 # -----------------------------------------------------------------------
 
 

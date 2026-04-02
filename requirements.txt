@@ -13,6 +13,7 @@ matplotlib>=3.7
 # Subsystem 2 - Object Classification
 torch>=2.0
 torchvision>=0.15
+timm
 
 
 # Subsystem 3 - Anomaly Detection
