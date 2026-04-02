@@ -91,7 +91,7 @@ def render_bar_with_pie_tabs(series_data, label_name):
             .properties(height=320)
         )
 
-        st.altair_chart(pie_chart, use_container_width=True)
+        st.altair_chart(pie_chart, width='stretch')
 
 
 def render_confusion_matrix_style_heatmap(matrix_df):
@@ -130,7 +130,7 @@ def render_confusion_matrix_style_heatmap(matrix_df):
         color=alt.value("black")
     )
 
-    st.altair_chart((rect + text).properties(height=320), use_container_width=True)
+    st.altair_chart((rect + text).properties(height=320), width='stretch')
 
 
 total_inspections = len(df)
