@@ -1,7 +1,7 @@
 """
 Subsystem 2 - Object Classification
-Loads the fine-tuned MobileNetV3-Small classifier and returns a class label + confidence.
-Model: MobileNetV3-Small fine-tuned on MVTec AD surface classes.
+Loads the fine-tuned EfficientNet-B0 classifier and returns a class label + confidence.
+Model: EfficientNet-B0 fine-tuned on MVTec AD surface classes.
 
 Supported classes:
 - carpet
@@ -23,7 +23,7 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
-import torchvision.models as models
+import timm
 from torchvision import transforms
 from PIL import Image
 import numpy as np
@@ -32,8 +32,8 @@ import numpy as np
 BASE_DIR   = Path(__file__).resolve().parent.parent
 MODELS_DIR = BASE_DIR / "models"
 
-MODEL_PATH = MODELS_DIR / "mobilenet_v3_small.pt"
-EMBED_PATH = MODELS_DIR / "mobilenet_v3_small_embed.pt"
+MODEL_PATH = MODELS_DIR / "efficientnet_b0.pt"
+EMBED_PATH = MODELS_DIR / "efficientnet_b0_embed.pt"
 META_PATH  = Path(__file__).parent / "classes.json"
 
 IMG_SIZE = 224
@@ -60,38 +60,46 @@ UNCERTAINTY_TOP3_FLOOR = 0.08
 UNCERTAINTY_MARGIN_CEIL = 0.20
 
 
-class MobileNetV3SmallClassifier(nn.Module):
+class EfficientNetB0Classifier(nn.Module):
     """
-    MobileNetV3-Small fine-tuned for surface classification.
+    EfficientNet-B0 fine-tuned for surface classification.
     Mirrors the architecture defined in the training notebook exactly.
+    Base layers frozen initially; full fine-tuning after warm-up.
     """
 
-    def __init__(self, num_classes: int, dropout: float = 0.2):
+    def __init__(self, num_classes: int, dropout: float = 0.3,
+                 freeze_base: bool = True):
         super().__init__()
-        base = models.mobilenet_v3_small(weights=None)
-
-        self.features = base.features
-        self.avgpool  = base.avgpool
-        in_features   = base.classifier[0].in_features
+        self.base = timm.create_model(
+            'efficientnet_b0', pretrained=False,
+            num_classes=0, global_pool='avg'
+        )
+        in_features = self.base.num_features
 
         self.classifier = nn.Sequential(
-            nn.Linear(in_features, 256),
-            nn.Hardswish(inplace=True),
             nn.Dropout(p=dropout),
+            nn.Linear(in_features, 256),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p=dropout / 2),
             nn.Linear(256, num_classes),
         )
 
+        if freeze_base:
+            for param in self.base.parameters():
+                param.requires_grad = False
+
+    def unfreeze_base(self):
+        """Unfreeze all backbone parameters for full fine-tuning."""
+        for param in self.base.parameters():
+            param.requires_grad = True
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.features(x)
-        x = self.avgpool(x)
-        x = torch.flatten(x, 1)
-        return self.classifier(x)
+        features = self.base(x)
+        return self.classifier(features)
 
     def get_embedding(self, x: torch.Tensor) -> torch.Tensor:
         """Return the pooled feature vector before the classifier head."""
-        x = self.features(x)
-        x = self.avgpool(x)
-        return torch.flatten(x, 1)
+        return self.base(x)
 
 
 def _l2_normalize(x: np.ndarray, eps: float = 1e-12) -> np.ndarray:
@@ -148,7 +156,7 @@ def _embedding_gate(feat: np.ndarray, embed_data: dict) -> bool:
 
 def load_classifier(device: str = "cpu"):
     """
-    Load the MobileNetV3-Small classifier, embedding gate data, and class metadata.
+    Load the EfficientNet-B0 classifier, embedding gate data, and class metadata.
 
     Returns model, meta, embed_data, transform, device.
     model      - nn.Module in eval mode
@@ -169,7 +177,8 @@ def load_classifier(device: str = "cpu"):
 
     num_classes = meta["num_classes"]
 
-    model = MobileNetV3SmallClassifier(num_classes=num_classes, dropout=0.2)
+    model = EfficientNetB0Classifier(num_classes=num_classes, dropout=0.3,
+                                     freeze_base=False)
     checkpoint = torch.load(MODEL_PATH, map_location=device, weights_only=False)
 
     # Support both a raw state dict and a checkpoint dict with a "state_dict" key
@@ -245,7 +254,7 @@ def classify(
     device: str = "cpu",
 ) -> dict:
     """
-    Classify a prepared object image using MobileNetV3-Small and the embedding gate.
+    Classify a prepared object image using EfficientNet-B0 and the embedding gate.
 
     Returns a dict with:
     - label: final decision string used by the downstream pipeline
@@ -276,7 +285,6 @@ def classify(
     top3 = [(classes[i], float(probs[i])) for i in top3_indices]
 
     top1_label, top1_conf = top3[0]
-    top1_idx              = int(top3_indices[0])
     top2_conf             = top3[1][1] if len(top3) > 1 else 0.0
 
     # Rule 1 - low overall confidence
