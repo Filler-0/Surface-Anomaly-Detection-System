@@ -113,7 +113,7 @@ def run_full_pipeline(saved_image_path: str) -> dict:
     if class_label.lower() == "rejected":
         result["verdict"] = "UNSUPPORTED_FORMAT"
         result["raw_output"] = (
-            "The image was rejected by the embedding gate as out-of-distribution. "
+            "The image was rejected by the unknown class threshold"
             "Anomaly detection was not run."
         )
         return result
