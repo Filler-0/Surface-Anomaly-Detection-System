@@ -1,5 +1,19 @@
 # Adding a New Class to the Recognition System
 
+## Running the Demo
+
+Locate resnet18_backbone.pth file in project submission folder
+
+Paste the file into directory:
+
+syrface-anomaly-detection-system/fututre_integration/models/
+
+Locate pipline.py file in syrface-anomaly-detection-system/
+
+Change MODE to Recogniser:
+
+MODE = Recogniser
+
 ## Overview
 
 The recognition system uses a frozen ResNet18 backbone to extract feature embeddings, and a multi-prototype bank to classify objects. Adding a new class does **not** require retraining the backbone — it only computes new prototype centroids for the new class and appends them to the bank.
