@@ -1,78 +1,77 @@
 # Surface Anomaly Detection System
 
-Surface inspection system with a Streamlit UI, PyTorch-based classification + anomaly detection, and PostgreSQL-backed history.
+Surface inspection application with a Streamlit UI, an EfficientNet-B0 image classifier, STFPM anomaly detection (Anomalib), and PostgreSQL-backed history.
 
-## What The System Does
+## Current System Behavior
 
-1. User uploads one or more images in the Streamlit app.
-2. A classifier predicts the surface class (`carpet`, `grid`, `leather`, `tile`, `wood`) and top-3 scores.
-3. Unsupported/low-confidence cases are marked as `UNSUPPORTED_FORMAT` (no anomaly run).
-4. For supported classes, STFPM anomaly detection runs on the image.
-5. Final verdict is produced (`NORMAL`, `ANOMALOUS`, or `MANUAL_INSPECTION` for low anomaly certainty).
-6. Result metadata and paths are saved to PostgreSQL.
-7. Dashboard and History pages read the stored records.
+1. Upload one or more images in `app.py` (JPG/JPEG/PNG).
+2. `pipeline.py` runs object classification via `object_localisation_classification/prepare_image.py`.
+3. If the class is unsupported (`unknown`, `rejected`, or `uncertain`), anomaly detection is skipped and verdict is `UNSUPPORTED_FORMAT`.
+4. For supported classes (`carpet`, `grid`, `leather`, `tile`, `wood`), `multi_detector.py` runs STFPM anomaly detection.
+5. Final verdict is one of:
+   - `NORMAL`
+   - `ANOMALOUS`
+   - `MANUAL_INSPECTION` (low anomaly certainty)
+   - `UNSUPPORTED_FORMAT`
+6. Results are stored in PostgreSQL (`inspections` table).
+7. Streamlit `Dashboard` and `History` pages read from the same table.
 
-## Current Architecture
+## Architecture
 
 ```text
-Streamlit App (app.py)
-  |
-  +-- Upload + preview images
-  +-- For each image -> run_full_pipeline(...)
-        |
-        +-- Classification (object_localisation_classification/prepare_image.py)
-        |     +-- MobileNetV3-Small classifier (models/mobilenet_v3_small.pt)
-        |     +-- Embedding/OOD gate (models/mobilenet_v3_small_embed.pt)
-        |
-        +-- Verdict gate
-        |     +-- unsupported/rejected/uncertain -> UNSUPPORTED_FORMAT
-        |
-        +-- Anomaly Detection (multi_detector.py via anomalib STFPM)
-        |     +-- Per-class checkpoint: models/stfpm_<class>.ckpt
-        |
-        +-- Final verdict
-              +-- NORMAL / ANOMALOUS / MANUAL_INSPECTION
+Streamlit UI
+  app.py                -> Upload, run pipeline, show per-image result
+  pages/dashboard.py    -> KPIs + charts from DB history
+  pages/history.py      -> Filterable stored inspections
 
-Persistence Layer (db.py + PostgreSQL)
-  +-- insert_inspection(...)
-  +-- fetch_history(...)
+Core Pipeline
+  pipeline.py
+    -> Classification (prepare_image.py -> classifier.py)
+    -> Verdict gate (unsupported vs supported)
+    -> Subprocess anomaly call: python multi_detector.py <class> <temp_dir>
+    -> Final verdict + metadata
 
-UI Pages (Streamlit)
-  +-- app.py (upload + inference)
-  +-- pages/dashboard.py (KPIs/charts)
-  +-- pages/history.py (filterable history)
+ML Components
+  object_localisation_classification/classifier.py
+    -> EfficientNet-B0 classifier checkpoint: models/efficientnet_b0.pt
+    -> Class metadata: object_localisation_classification/classes.json
+
+  multi_detector.py
+    -> Anomalib STFPM inference per class
+    -> Checkpoints: models/stfpm_<class>.ckpt
+    -> Fallback path: future_integration/models/new_stfpm/stfpm_<class>.ckpt
+
+Persistence
+  db.py + init_db.sql
+    -> PostgreSQL table: inspections
 ```
 
 ## Tech Stack
 
-- UI: Streamlit, Altair
-- Core language/runtime: Python 3.11
-- ML: PyTorch, Torchvision, Anomalib (STFPM)
-- Data/processing: NumPy, Pandas, Pillow, Matplotlib, scikit-learn, seaborn
-- Database: PostgreSQL + psycopg2
-- Config: python-dotenv
-- Containerization: Docker, Docker Compose
+- Python 3.11
+- Streamlit
+- PyTorch, Torchvision, timm
+- Anomalib (STFPM)
+- NumPy, Pandas, Pillow
+- Matplotlib, scikit-learn, seaborn
+- PostgreSQL + psycopg2-binary
+- python-dotenv
+- Docker + Docker Compose
 
-## Model Files In Repository
+## Runtime Model Files
 
-All required runtime model files are currently in Git (no separate large-model download step required).
+### Classification
 
-### Classification models
+- `models/efficientnet_b0.pt`
+- `object_localisation_classification/classes.json`
 
-- `models/mobilenet_v3_small.pt`
-- `models/mobilenet_v3_small_embed.pt`
-
-### Anomaly models (STFPM)
+### Anomaly Detection (STFPM)
 
 - `models/stfpm_carpet.ckpt`
 - `models/stfpm_grid.ckpt`
 - `models/stfpm_leather.ckpt`
 - `models/stfpm_tile.ckpt`
 - `models/stfpm_wood.ckpt`
-
-Notes:
-- `multi_detector.py` prefers `models/stfpm_<class>.ckpt` and falls back to `future_integration/models/new_stfpm/stfpm_<class>.ckpt` if needed.
-- Main pipeline mode is currently `MODE = "Classifier"` in `pipeline.py`.
 
 ## Project Structure
 
@@ -89,8 +88,7 @@ Surface-Anomaly-Detection-System/
 |-- docker-compose.yml
 |-- .env.example
 |-- models/
-|   |-- mobilenet_v3_small.pt
-|   |-- mobilenet_v3_small_embed.pt
+|   |-- efficientnet_b0.pt
 |   |-- stfpm_carpet.ckpt
 |   |-- stfpm_grid.ckpt
 |   |-- stfpm_leather.ckpt
@@ -109,27 +107,9 @@ Surface-Anomaly-Detection-System/
 |-- future_integration/
 ```
 
-## Run With Docker
-
-1. Build and start:
-
-```bash
-docker compose up --build
-```
-
-2. Open:
-
-```text
-http://localhost:8501
-```
-
-Containers/services:
-- `app`: Streamlit application
-- `db`: PostgreSQL 16
-
 ## Environment Variables
 
-Used by the app for PostgreSQL connection:
+Set DB connection variables (same names used by `db.py`):
 
 ```env
 DB_HOST=db
@@ -139,9 +119,23 @@ DB_USER=postgres
 DB_PASSWORD=postgres
 ```
 
-In Docker Compose these are already set for the `app` container.
+## Run With Docker
 
-## Run Locally (Without Docker)
+```bash
+docker compose up --build
+```
+
+Open:
+
+```text
+http://localhost:8501
+```
+
+Services in `docker-compose.yml`:
+- `app`: Streamlit application
+- `db`: PostgreSQL 16
+
+## Run Locally
 
 1. Install dependencies:
 
@@ -149,11 +143,15 @@ In Docker Compose these are already set for the `app` container.
 pip install -r requirements.txt
 ```
 
-2. Start PostgreSQL and create the `inspections` table (or run `init_db.sql`).
+2. Start PostgreSQL and initialize schema:
 
-3. Set environment variables (for example using `.env`).
+```bash
+psql -U <user> -d <db_name> -f init_db.sql
+```
 
-4. Run the app:
+3. Set environment variables (for example via `.env`).
+
+4. Start Streamlit:
 
 ```bash
 streamlit run app.py
@@ -161,10 +159,17 @@ streamlit run app.py
 
 ## Database Schema
 
-`init_db.sql` creates one table:
+`init_db.sql` creates table `inspections` with fields for:
+- uploaded image metadata
+- classification result and confidence/top-3
+- anomaly score and final verdict
+- raw pipeline output
+- creation timestamp
 
-- `inspections`
-  - stores image info, classification output, anomaly output, verdict, raw output, and timestamp.
+## Notes
+
+- `pipeline.py` currently runs with `MODE = "Classifier"`.
+- `MODE = "Recognition"` exists for experimental future integration under `future_integration/`.
 
 ## Authors
 
